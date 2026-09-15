@@ -13,7 +13,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "")
 EXPECTED_USER = os.getenv("STREAMLIT_USERNAME", "admin")
 EXPECTED_PASS = os.getenv("STREAMLIT_PASSWORD", "admin")
 
-st.set_page_config(page_title="Qwen Swarm", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="Chat - Qwen 27b ", page_icon="🤖", layout="wide")
 
 # --- Authentication ---
 def check_password():
