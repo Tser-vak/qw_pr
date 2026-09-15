@@ -189,7 +189,7 @@ if prompt := st.chat_input("What would you like to ask?"):
                 response = client.chat.completions.create(
                     model=MODEL_NAME,
                     messages=st.session_state.messages,
-                    max_tokens=4096,
+                    max_tokens=8192,
                     temperature=0.7,
                     stream=True
                 )
@@ -271,7 +271,7 @@ if prompt := st.chat_input("What would you like to ask?"):
                     synth_response = client.chat.completions.create(
                         model=MODEL_NAME,
                         messages=synth_messages,
-                        max_tokens=4096,
+                        max_tokens=8192,
                         temperature=0.5,
                         stream=True
                     )
