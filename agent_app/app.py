@@ -109,7 +109,8 @@ def save_chat_history():
 # --- Initialize OpenAI Client ---
 client = OpenAI(
     api_key="EMPTY",  # Ollama doesn't require a real API key
-    base_url=OLLAMA_API_BASE
+    base_url=OLLAMA_API_BASE,
+    timeout=3600.0  # 1 hour timeout to prevent 10m0s disconnections
 )
 
 # --- Sidebar & State ---
