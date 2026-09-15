@@ -42,7 +42,17 @@ if not check_password():
     st.stop()  # Stop execution until logged in
 
 # --- Database Setup (Neon PostgreSQL) ---
-@st.cache_resource
+def check_db_connection(conn):
+    if conn is None:
+        return False
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+        return True
+    except Exception:
+        return False
+
+@st.cache_resource(validate=check_db_connection)
 def init_db():
     if not DATABASE_URL:
         return None
