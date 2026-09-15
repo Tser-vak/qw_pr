@@ -1,0 +1,61 @@
+name: qw_pr
+
+services:
+  vllm-server:
+    build:
+      context: ./vllm_server
+    container_name: vllm-server
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    ports:
+      - "8000:8000"
+    volumes:
+      - hf-cache:/root/.cache/huggingface
+    environment:
+      # Optional: Set this in .env if the model is gated or you face rate limits
+      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN:-}
+    # Command configures vLLM to serve the specific Unsloth GGUF file
+    command: >
+      --model unsloth/Qwen3.8-27B-GGUF
+      --model-impl gguf
+      --served-model-name qwen3-27b
+      --tokenizer Qwen/Qwen3.8-27B
+      --max-model-len 8192
+      --gpu-memory-utilization 0.90
+      --enforce-eager
+      --reasoning-parser qwen3
+      --port 8000
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/v1/models"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 900s  # Allow up to 15 mins for first-time 17.6GB model download
+
+  swarm-ui:
+    build:
+      context: ./agent_app
+    container_name: swarm-ui
+    ports:
+      - "8501:8501"
+    environment:
+      - VLLM_API_BASE=http://vllm-server:8000/v1
+      - MODEL_NAME=qwen3-27b
+      - DATABASE_URL=${DATABASE_URL:-}
+      - STREAMLIT_USERNAME=${STREAMLIT_USERNAME:-admin}
+      - STREAMLIT_PASSWORD=${STREAMLIT_PASSWORD:-admin}
+    depends_on:
+      vllm-server:
+        condition: service_healthy
+    volumes:
+      - ./agent_app:/app
+      - ./tests:/app/tests
+
+volumes:
+  hf-cache:
