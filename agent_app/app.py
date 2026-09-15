@@ -47,7 +47,13 @@ def init_db():
     if not DATABASE_URL:
         return None
     try:
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg2.connect(
+            DATABASE_URL,
+            keepalives=1,
+            keepalives_idle=30,
+            keepalives_interval=10,
+            keepalives_count=5
+        )
         conn.autocommit = True
         with conn.cursor() as cur:
             cur.execute("""
