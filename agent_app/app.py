@@ -176,10 +176,27 @@ if prompt := st.chat_input("What would you like to ask?"):
                     stream=True
                 )
                 for chunk in response:
-                    if chunk.choices[0].delta.content is not None:
-                        full_response += chunk.choices[0].delta.content
-                        display_text = full_response.replace("<think>", "💭 **Thinking...**\n```text\n").replace("</think>", "\n```\n\n")
-                        message_placeholder.markdown(display_text + "▌")
+                    delta = chunk.choices[0].delta
+                    
+                    # Extract reasoning if the server separated it
+                    reasoning = getattr(delta, "reasoning_content", None)
+                    if reasoning is None and hasattr(delta, "model_extra") and delta.model_extra:
+                        reasoning = delta.model_extra.get("reasoning_content")
+                    
+                    # If there's reasoning content directly, add the tags manually so the UI formatting catches it
+                    if reasoning:
+                        if "<think>" not in full_response:
+                            full_response += "<think>"
+                        full_response += reasoning
+                        
+                    if delta.content is not None:
+                        # If the server finished reasoning and is now giving content, close the think tag if we opened it
+                        if "<think>" in full_response and "</think>" not in full_response and not reasoning:
+                             full_response += "</think>\n\n"
+                        full_response += delta.content
+
+                    display_text = full_response.replace("<think>", "💭 **Thinking...**\n```text\n").replace("</think>", "\n```\n\n")
+                    message_placeholder.markdown(display_text + "▌")
                 
                 final_display_text = full_response.replace("<think>", "💭 **Thinking...**\n```text\n").replace("</think>", "\n```\n\n")
                 message_placeholder.markdown(final_display_text)
@@ -192,7 +209,10 @@ if prompt := st.chat_input("What would you like to ask?"):
                 st.markdown("**Swarm execution started...**")
                 
                 # --- Agent 1: Planner ---
-                with st.spinner("Agent 1 (Planner) is thinking..."):
+                with st.expander("🧠 Planner Output (Agent 1)", expanded=True):
+                    st.markdown("**Agent 1 (Planner) is generating a plan...**")
+                    planner_placeholder = st.empty()
+                    
                     planner_messages = [
                         {"role": "system", "content": "You are a planning agent. Decompose the user's request into a numbered list of clear, actionable steps for the synthesizer to execute. Do not answer the question directly, just provide the plan."},
                         {"role": "user", "content": prompt}
@@ -203,12 +223,19 @@ if prompt := st.chat_input("What would you like to ask?"):
                         model=MODEL_NAME,
                         messages=planner_messages,
                         max_tokens=2048,
-                        temperature=0.7
+                        temperature=0.7,
+                        stream=True
                     )
-                    plan = planner_response.choices[0].message.content
-                
-                with st.expander("🧠 Planner Output (Agent 1)"):
-                    st.markdown(plan)
+                    
+                    plan = ""
+                    for chunk in planner_response:
+                        if chunk.choices[0].delta.content is not None:
+                            plan += chunk.choices[0].delta.content
+                            display_plan = plan.replace("<think>", "💭 **Thinking...**\n```text\n").replace("</think>", "\n```\n\n")
+                            planner_placeholder.markdown(display_plan + "▌")
+                    
+                    final_display_plan = plan.replace("<think>", "💭 **Thinking...**\n```text\n").replace("</think>", "\n```\n\n")
+                    planner_placeholder.markdown(final_display_plan)
 
                 # --- Agent 2: Synthesizer ---
                 with st.spinner("Agent 2 (Synthesizer) is generating the final response..."):
@@ -230,10 +257,24 @@ if prompt := st.chat_input("What would you like to ask?"):
                     )
                     
                     for chunk in synth_response:
-                        if chunk.choices[0].delta.content is not None:
-                            full_response += chunk.choices[0].delta.content
-                            display_text = full_response.replace("<think>", "💭 **Thinking...**\n```text\n").replace("</think>", "\n```\n\n")
-                            message_placeholder.markdown(display_text + "▌")
+                        delta = chunk.choices[0].delta
+                        
+                        reasoning = getattr(delta, "reasoning_content", None)
+                        if reasoning is None and hasattr(delta, "model_extra") and delta.model_extra:
+                            reasoning = delta.model_extra.get("reasoning_content")
+                            
+                        if reasoning:
+                            if "<think>" not in full_response:
+                                full_response += "<think>"
+                            full_response += reasoning
+                            
+                        if delta.content is not None:
+                            if "<think>" in full_response and "</think>" not in full_response and not reasoning:
+                                full_response += "</think>\n\n"
+                            full_response += delta.content
+                            
+                        display_text = full_response.replace("<think>", "💭 **Thinking...**\n```text\n").replace("</think>", "\n```\n\n")
+                        message_placeholder.markdown(display_text + "▌")
                     
                     final_display_text = full_response.replace("<think>", "💭 **Thinking...**\n```text\n").replace("</think>", "\n```\n\n")
                     message_placeholder.markdown(final_display_text)
