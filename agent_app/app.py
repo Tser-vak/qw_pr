@@ -2,14 +2,11 @@ import streamlit as st
 import os
 import json
 from openai import OpenAI
-import psycopg2
-from psycopg2.extras import Json
 import requests
 
 # --- Configuration & Setup ---
 OLLAMA_API_BASE = os.getenv("OLLAMA_API_BASE", "http://localhost:11434/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "qwen3-27b")
-DATABASE_URL = os.getenv("DATABASE_URL", "")
 EXPECTED_USER = os.getenv("STREAMLIT_USERNAME", "admin")
 EXPECTED_PASS = os.getenv("STREAMLIT_PASSWORD", "admin")
 
@@ -40,71 +37,6 @@ def check_password():
 
 if not check_password():
     st.stop()  # Stop execution until logged in
-
-# --- Database Setup (Neon PostgreSQL) ---
-def check_db_connection(conn):
-    if conn is None:
-        return False
-    try:
-        with conn.cursor() as cur:
-            cur.execute("SELECT 1")
-        return True
-    except Exception:
-        return False
-
-@st.cache_resource(validate=check_db_connection)
-def init_db():
-    if not DATABASE_URL:
-        return None
-    try:
-        conn = psycopg2.connect(
-            DATABASE_URL,
-            keepalives=1,
-            keepalives_idle=30,
-            keepalives_interval=10,
-            keepalives_count=5
-        )
-        conn.autocommit = True
-        with conn.cursor() as cur:
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS conversations (
-                    id SERIAL PRIMARY KEY,
-                    session_id TEXT NOT NULL,
-                    mode TEXT NOT NULL,
-                    created_at TIMESTAMPTZ DEFAULT NOW(),
-                    messages JSONB NOT NULL
-                );
-            """)
-        return conn
-    except Exception as e:
-        st.sidebar.error(f"DB Error: {e}")
-        return None
-
-db_conn = init_db()
-
-def save_chat_history():
-    if not db_conn or not st.session_state.messages:
-        return
-    try:
-        with db_conn.cursor() as cur:
-            # Simple approach: Upsert based on session_id (which we will define per chat)
-            # For simplicity, we just insert a new record for this session if it doesn't exist, 
-            # or update the existing one.
-            session_id = st.session_state.get("session_id", "default_session")
-            cur.execute("SELECT id FROM conversations WHERE session_id = %s", (session_id,))
-            record = cur.fetchone()
-            if record:
-                cur.execute(
-                    "UPDATE conversations SET messages = %s WHERE session_id = %s",
-                    (Json(st.session_state.messages), session_id)
-                )
-            else:
-                cur.execute(
-                    "INSERT INTO conversations (session_id, mode, messages) VALUES (%s, %s, %s)",
-                    (session_id, st.session_state.mode, Json(st.session_state.messages))
-                )
-    except Exception as e:
-        st.sidebar.error(f"Save Error: {e}")
 
 # --- Initialize OpenAI Client ---
 client = OpenAI(
@@ -149,21 +81,6 @@ with st.sidebar:
         st.session_state.session_id = str(uuid.uuid4())
         st.session_state.messages = []
         st.rerun()
-
-    # DB History (Optional)
-    if db_conn:
-        st.markdown("---")
-        with st.expander("📜 History"):
-            with db_conn.cursor() as cur:
-                cur.execute("SELECT session_id, created_at, mode FROM conversations ORDER BY created_at DESC LIMIT 10")
-                history = cur.fetchall()
-                for sid, created_at, h_mode in history:
-                    if st.button(f"{h_mode} ({created_at.strftime('%m-%d %H:%M')})", key=sid):
-                        cur.execute("SELECT messages FROM conversations WHERE session_id = %s", (sid,))
-                        st.session_state.messages = cur.fetchone()[0]
-                        st.session_state.session_id = sid
-                        st.session_state.mode = h_mode
-                        st.rerun()
 
 # --- Main App ---
 st.title(f"Qwen3.8-27B - {st.session_state.mode}")
@@ -222,7 +139,6 @@ if prompt := st.chat_input("What would you like to ask?"):
                 message_placeholder.markdown(final_display_text)
             
             st.session_state.messages.append({"role": "assistant", "content": full_response})
-            save_chat_history()
 
         elif st.session_state.mode == "Agent Swarm":
             with st.chat_message("assistant"):
@@ -301,7 +217,6 @@ if prompt := st.chat_input("What would you like to ask?"):
                     message_placeholder.markdown(final_display_text)
 
             st.session_state.messages.append({"role": "assistant", "content": full_response})
-            save_chat_history()
 
     except Exception as e:
         error_msg = str(e)

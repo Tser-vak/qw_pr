@@ -30,7 +30,6 @@ services:
     environment:
       - OLLAMA_API_BASE=http://ollama:11434/v1
       - MODEL_NAME=hf.co/unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL
-      - DATABASE_URL=${DATABASE_URL:-}
       - STREAMLIT_USERNAME=${STREAMLIT_USERNAME:-admin}
       - STREAMLIT_PASSWORD=${STREAMLIT_PASSWORD:-admin}
     depends_on:
