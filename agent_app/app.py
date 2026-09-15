@@ -173,7 +173,6 @@ if prompt := st.chat_input("What would you like to ask?"):
                     messages=st.session_state.messages,
                     max_tokens=4096,
                     temperature=0.7,
-                    extra_body={"chat_template_kwargs": {"enable_thinking": False}},
                     stream=True
                 )
                 for chunk in response:
@@ -201,8 +200,7 @@ if prompt := st.chat_input("What would you like to ask?"):
                         model=MODEL_NAME,
                         messages=planner_messages,
                         max_tokens=2048,
-                        temperature=0.7,
-                        extra_body={"reasoning_effort": "xhigh"}
+                        temperature=0.7
                     )
                     plan = planner_response.choices[0].message.content
                 
@@ -225,7 +223,6 @@ if prompt := st.chat_input("What would you like to ask?"):
                         messages=synth_messages,
                         max_tokens=4096,
                         temperature=0.5,
-                        extra_body={"chat_template_kwargs": {"enable_thinking": False}},
                         stream=True
                     )
                     

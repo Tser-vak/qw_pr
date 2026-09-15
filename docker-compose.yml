@@ -1,10 +1,9 @@
 name: qw_pr
 
 services:
-  vllm-server:
-    build:
-      context: ./vllm_server
-    container_name: vllm-server
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
     runtime: nvidia
     deploy:
       resources:
@@ -14,25 +13,15 @@ services:
               count: all
               capabilities: [gpu]
     ports:
-      - "8000:8000"
+      - "11434:11434"
     volumes:
-      - hf-cache:/root/.cache/huggingface
-    environment:
-      # Optional: Set this in .env if the model is gated or you face rate limits
-      - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN:-}
-    # Command configures vLLM to serve the specific Unsloth GGUF file
+      - ollama-data:/root/.ollama
+    # Ollama automatically supports downloading from Hugging Face!
+    # We start the server in the background, wait 5 seconds, and pull the model.
     command: >
-      --model unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL
-      --model-impl gguf
-      --served-model-name qwen3-27b
-      --tokenizer Qwen/Qwen3.8-27B
-      --max-model-len 8192
-      --gpu-memory-utilization 0.90
-      --enforce-eager
-      --reasoning-parser qwen3
-      --port 8000
+      bash -c "ollama serve & sleep 5 && ollama pull hf.co/unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL && wait"
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:8000/v1/models"]
+      test: ["CMD", "curl", "-sf", "http://localhost:11434/v1/models"]
       interval: 30s
       timeout: 10s
       retries: 20
@@ -45,17 +34,17 @@ services:
     ports:
       - "8501:8501"
     environment:
-      - VLLM_API_BASE=http://vllm-server:8000/v1
-      - MODEL_NAME=qwen3-27b
+      - VLLM_API_BASE=http://ollama:11434/v1
+      - MODEL_NAME=hf.co/unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL
       - DATABASE_URL=${DATABASE_URL:-}
       - STREAMLIT_USERNAME=${STREAMLIT_USERNAME:-admin}
       - STREAMLIT_PASSWORD=${STREAMLIT_PASSWORD:-admin}
     depends_on:
-      vllm-server:
+      ollama:
         condition: service_healthy
     volumes:
       - ./agent_app:/app
       - ./tests:/app/tests
 
 volumes:
-  hf-cache:
+  ollama-data:
