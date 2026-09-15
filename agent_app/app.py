@@ -7,7 +7,7 @@ from psycopg2.extras import Json
 import requests
 
 # --- Configuration & Setup ---
-VLLM_API_BASE = os.getenv("VLLM_API_BASE", "http://localhost:8000/v1")
+OLLAMA_API_BASE = os.getenv("OLLAMA_API_BASE", "http://localhost:11434/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "qwen3-27b")
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 EXPECTED_USER = os.getenv("STREAMLIT_USERNAME", "admin")
@@ -92,8 +92,8 @@ def save_chat_history():
 
 # --- Initialize OpenAI Client ---
 client = OpenAI(
-    api_key="EMPTY",  # vLLM doesn't require a real API key
-    base_url=VLLM_API_BASE
+    api_key="EMPTY",  # Ollama doesn't require a real API key
+    base_url=OLLAMA_API_BASE
 )
 
 # --- Sidebar & State ---
@@ -103,15 +103,15 @@ with st.sidebar:
     # Status Check
     st.markdown("### System Status")
     try:
-        res = requests.get(f"{VLLM_API_BASE}/models", timeout=2)
+        res = requests.get(f"{OLLAMA_API_BASE}/models", timeout=2)
         if res.status_code == 200:
             models = res.json().get("data", [])
             served_model = models[0]["id"] if models else "Unknown"
-            st.success(f"vLLM Online\nModel: {served_model}")
+            st.success(f"Ollama Online\nModel: {served_model}")
         else:
-            st.warning("vLLM starting...")
+            st.warning("Ollama starting or downloading model...")
     except requests.exceptions.RequestException:
-        st.error("vLLM Offline or Loading...")
+        st.error("Ollama Offline or Loading...")
 
     st.markdown("---")
     
