@@ -17,9 +17,9 @@ services:
     volumes:
       - ollama-data:/root/.ollama
     # Ollama automatically supports downloading from Hugging Face!
-    # We start the server in the background, wait 5 seconds, and pull the model.
-    command: >
-      bash -c "ollama serve & sleep 5 && ollama pull hf.co/unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL && wait"
+    # We override the entrypoint so we can run a background script to pull the model automatically
+    entrypoint: /bin/bash
+    command: -c "ollama serve & sleep 5 && ollama pull hf.co/unsloth/Qwen3.8-27B-GGUF:UD-Q4_K_XL && wait"
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:11434/v1/models"]
       interval: 30s
