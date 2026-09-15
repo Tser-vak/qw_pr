@@ -172,7 +172,9 @@ if prompt := st.chat_input("What would you like to ask?"):
         if st.session_state.mode == "Standard Chat":
             with st.chat_message("assistant"):
                 message_placeholder = st.empty()
+                message_placeholder.markdown("*(Loading model and evaluating prompt...)* ▌")
                 full_response = ""
+                
                 # Thinking disabled for speed in standard chat
                 response = client.chat.completions.create(
                     model=MODEL_NAME,
@@ -181,6 +183,7 @@ if prompt := st.chat_input("What would you like to ask?"):
                     temperature=0.7,
                     stream=True
                 )
+                
                 for chunk in response:
                     delta = chunk.choices[0].delta
                     
@@ -246,6 +249,7 @@ if prompt := st.chat_input("What would you like to ask?"):
                 # --- Agent 2: Synthesizer ---
                 with st.spinner("Agent 2 (Synthesizer) is generating the final response..."):
                     message_placeholder = st.empty()
+                    message_placeholder.markdown("*(Synthesizing response...)* ▌")
                     full_response = ""
                     
                     synth_messages = [
