@@ -178,8 +178,11 @@ if prompt := st.chat_input("What would you like to ask?"):
                 for chunk in response:
                     if chunk.choices[0].delta.content is not None:
                         full_response += chunk.choices[0].delta.content
-                        message_placeholder.markdown(full_response + "▌")
-                message_placeholder.markdown(full_response)
+                        display_text = full_response.replace("<think>", "💭 **Thinking...**\n```text\n").replace("</think>", "\n```\n\n")
+                        message_placeholder.markdown(display_text + "▌")
+                
+                final_display_text = full_response.replace("<think>", "💭 **Thinking...**\n```text\n").replace("</think>", "\n```\n\n")
+                message_placeholder.markdown(final_display_text)
             
             st.session_state.messages.append({"role": "assistant", "content": full_response})
             save_chat_history()
@@ -229,8 +232,11 @@ if prompt := st.chat_input("What would you like to ask?"):
                     for chunk in synth_response:
                         if chunk.choices[0].delta.content is not None:
                             full_response += chunk.choices[0].delta.content
-                            message_placeholder.markdown(full_response + "▌")
-                    message_placeholder.markdown(full_response)
+                            display_text = full_response.replace("<think>", "💭 **Thinking...**\n```text\n").replace("</think>", "\n```\n\n")
+                            message_placeholder.markdown(display_text + "▌")
+                    
+                    final_display_text = full_response.replace("<think>", "💭 **Thinking...**\n```text\n").replace("</think>", "\n```\n\n")
+                    message_placeholder.markdown(final_display_text)
 
             st.session_state.messages.append({"role": "assistant", "content": full_response})
             save_chat_history()
